@@ -1,44 +1,16 @@
-package main
+package golox
 
 import (
-	"bufio"
 	"fmt"
-	"io/ioutil"
-	"os"
 )
 
 var hadError bool = false
 
-func main() {
-	args := os.Args
-	if len(args) > 2 {
-		fmt.Println("Usage golox [script]")
-		os.Exit(64)
-	} else if len(args) == 2 {
-		runFile(args[1])
+func parseError(tok token, message string) {
+	if tok.ttype == eof {
+		report(tok.line, "at end", message)
 	} else {
-		runPrompt()
-	}
-}
-
-func runPrompt() {
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		fmt.Print("> ")
-		text, _ := reader.ReadString('\n')
-		run(text)
-		hadError = true
-	}
-}
-
-func runFile(script string) {
-	b, err := ioutil.ReadFile(script)
-	if err != nil {
-		fmt.Print(err)
-	}
-	run(string(b))
-	if hadError {
-		os.Exit(65)
+		report(tok.line, fmt.Sprintf("at '%s'", tok.lexeme), message)
 	}
 }
 
@@ -51,12 +23,15 @@ func report(line int, where string, message string) {
 	fmt.Println("Error on line ", line, ":", where, " -- ", message)
 }
 
-func run(source string) {
-	scanner := Scanner{source: source}
-	tokens := scanner.scanTokens()
-	for _, token := range tokens {
-		fmt.Printf("%#v\n", token)
-	}
-	fmt.Print(source)
-	fmt.Println("hadError", hadError)
+func RunScanner(source string) []token {
+    s := scanner{source: source}
+	return s.scanTokens()
+}
+
+func Run(source string) bool {
+    tokens := RunScanner(source)
+	p := parser{tokens: tokens}
+	e := p.parse()
+	fmt.Print(e)
+	return hadError
 }

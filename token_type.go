@@ -1,57 +1,76 @@
-package main
+package golox
 
-type TokenType int
+var reserved_words = map[string]tokenType{
+	"and":    andKeyword,
+	"class":  classKeyword,
+	"else":   elseKeyword,
+	"false":  falseKeyword,
+	"fun":    funKeyword,
+	"for":    forKeyword,
+	"if":     ifKeyword,
+	"nil":    nilKeyword,
+	"or":     orKeyword,
+	"print":  printKeyword,
+	"return": returnKeyword,
+	"super":  superKeyword,
+	"this":   thisKeyword,
+	"true":   trueKeyword,
+	"var":    varKeyword,
+	"while":  whileKeyword,
+}
+
+type tokenType int
 
 const (
 	// Single char tokens
-	LeftParen  TokenType = 0
-	RightParen TokenType = 1
-	LeftBrace  TokenType = 2
-	RightBrace TokenType = 3
-	Comma      TokenType = 4
-	Dot        TokenType = 5
-	Minus      TokenType = 6
-	Plus       TokenType = 7
-	Semicolon  TokenType = 8
-	Slash      TokenType = 9
-	Star       TokenType = 10
+	leftParen  tokenType = 0
+	rightParen tokenType = 1
+	leftBrace  tokenType = 2
+	rightBrace tokenType = 3
+	comma      tokenType = 4
+	dot        tokenType = 5
+	minus      tokenType = 6
+	plus       tokenType = 7
+	semicolon  tokenType = 8
+	slash      tokenType = 9
+	star       tokenType = 10
 
 	// One/two char tokens
-	Bang         TokenType = 11
-	BangEqual    TokenType = 12
-	Equal        TokenType = 13
-	EqualEqual   TokenType = 14
-	Greater      TokenType = 15
-	GreaterEqual TokenType = 16
-	Less         TokenType = 17
-	LessEqual    TokenType = 18
+	bang         tokenType = 11
+	bangEqual    tokenType = 12
+	equal        tokenType = 13
+	equalEqual   tokenType = 14
+	greater      tokenType = 15
+	greaterEqual tokenType = 16
+	less         tokenType = 17
+	lessEqual    tokenType = 18
 
 	// Literals
-	Identifier TokenType = 19
-	String     TokenType = 20
-	Number     TokenType = 21
+	identifier    tokenType = 19
+	stringLiteral tokenType = 20
+	number        tokenType = 21
 
 	// Keywords
-	And    TokenType = 22
-	Class  TokenType = 23
-	Else   TokenType = 24
-	False  TokenType = 25
-	Fun    TokenType = 26
-	For    TokenType = 27
-	If     TokenType = 28
-	Nil    TokenType = 29
-	Or     TokenType = 30
-	Print  TokenType = 31
-	Return TokenType = 32
-	Super  TokenType = 33
-	This   TokenType = 34
-	True   TokenType = 35
-	Var    TokenType = 36
-	While  TokenType = 37
+	andKeyword    tokenType = 22
+	classKeyword  tokenType = 23
+	elseKeyword   tokenType = 24
+	falseKeyword  tokenType = 25
+	funKeyword    tokenType = 26
+	forKeyword    tokenType = 27
+	ifKeyword     tokenType = 28
+	nilKeyword    tokenType = 29
+	orKeyword     tokenType = 30
+	printKeyword  tokenType = 31
+	returnKeyword tokenType = 32
+	superKeyword  tokenType = 33
+	thisKeyword   tokenType = 34
+	trueKeyword   tokenType = 35
+	varKeyword    tokenType = 36
+	whileKeyword  tokenType = 37
 
-	Eof TokenType = 38
+	eof tokenType = 38
 )
 
-func (ttype TokenType) String() string {
+func (ttype tokenType) String() string {
 	return "test"
 }

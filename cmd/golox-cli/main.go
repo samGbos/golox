@@ -28,10 +28,8 @@ func runPrompt() {
 	for {
 		fmt.Print("> ")
 		text, _ := reader.ReadString('\n')
-		hadError := golox.Run(text)
-		if hadError {
-			fmt.Print("Error ocurred")
-		}
+		expr := golox.RunParser(text)
+		fmt.Println(expr)
 	}
 }
 

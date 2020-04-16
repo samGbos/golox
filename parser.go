@@ -7,76 +7,76 @@ type parser struct {
 	current int
 }
 
-func (p *parser) parse() expr {
+func (p *parser) parse() Expr {
 	p.current = 0
 	return p.expression()
 }
 
-func (p *parser) expression() expr {
+func (p *parser) expression() Expr {
 	return p.equality()
 }
 
-func (p *parser) equality() expr {
-	e := p.comparison()
+func (p *parser) equality() Expr {
+	expr := p.comparison()
 
 	for p.match([]TokenType{BangEqual, EqualEqual}) {
 		operator := p.previous()
 		right := p.comparison()
-		e = binaryExpr{e, operator, right}
+		expr = binaryExpr{expr, operator, right}
 	}
 
-	return e
+	return expr
 }
 
-func (p *parser) comparison() expr {
-	e := p.addition()
+func (p *parser) comparison() Expr {
+	expr := p.addition()
 	for p.match([]TokenType{Greater, GreaterEqual, Less, LessEqual}) {
 
 		operator := p.previous()
 		right := p.addition()
-		e = binaryExpr{e, operator, right}
+		expr = binaryExpr{expr, operator, right}
 	}
 
-	return e
+	return expr
 }
 
-func (p *parser) addition() expr {
-	e := p.multiplication()
+func (p *parser) addition() Expr {
+	expr := p.multiplication()
 	for p.match([]TokenType{Minus, Plus}) {
 		operator := p.previous()
 		right := p.multiplication()
-		e = binaryExpr{e, operator, right}
+		expr = binaryExpr{expr, operator, right}
 	}
 
-	return e
+	return expr
 }
 
-func (p *parser) multiplication() expr {
-	e := p.unary()
+func (p *parser) multiplication() Expr {
+	expr := p.unary()
 
 	for p.match([]TokenType{Slash, Star}) {
 		operator := p.previous()
 		right := p.unary()
-		e = binaryExpr{e, operator, right}
+		expr = binaryExpr{expr, operator, right}
 	}
 
-	return e
+	return expr
 }
 
-func (p *parser) unary() expr {
+func (p *parser) unary() Expr {
 	if p.match([]TokenType{Bang, Minus}) {
 		operator := p.previous()
 		right := p.unary()
 		return unaryExpr{operator, right}
 	}
-	e, err := p.primary()
+	expr, err := p.primary()
 	if err != nil {
 		// Do something
 	}
-	return e
+	return expr
 }
 
-func (p *parser) primary() (expr, error) {
+func (p *parser) primary() (Expr, error) {
 	if p.match([]TokenType{FalseKeyword}) {
 		return literalExpr{false}, nil
 	}
@@ -90,12 +90,12 @@ func (p *parser) primary() (expr, error) {
 		return literalExpr{p.previous().Literal}, nil
 	}
 	if p.match([]TokenType{LeftParen}) {
-		e := p.expression()
+		expr := p.expression()
 		_, err := p.consume(RightParen, "Expected matching ')'")
 		if err != nil {
 			// Do nothing for now
 		}
-		return groupingExpr{e}, nil
+		return groupingExpr{expr}, nil
 	}
 	parseError(p.peek(), "Expected expression")
 	return nil, errors.New("Expected expression!")

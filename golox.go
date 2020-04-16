@@ -28,10 +28,9 @@ func RunScanner(source string) []Token {
 	return s.scanTokens()
 }
 
-func Run(source string) bool {
+func RunParser(source string) Expr {
 	tokens := RunScanner(source)
 	p := parser{tokens: tokens}
-	e := p.parse()
-	fmt.Print(e)
-	return hadError
+	expr := p.parse()
+	return expr
 }

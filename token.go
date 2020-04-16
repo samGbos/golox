@@ -1,8 +1,8 @@
 package golox
 
-type token struct {
-	ttype   tokenType
-	lexeme  string
-	literal interface{}
-	line    int
+type Token struct {
+	Ttype   TokenType
+	Lexeme  string
+	Literal interface{}
+	Line    int
 }

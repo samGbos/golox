@@ -1,3 +1,5 @@
+// +build !js
+
 package main
 
 import (
@@ -28,7 +30,7 @@ func runPrompt() {
 		text, _ := reader.ReadString('\n')
 		hadError := golox.Run(text)
 		if hadError {
-		    fmt.Print("Error ocurred")
+			fmt.Print("Error ocurred")
 		}
 	}
 }
@@ -43,6 +45,6 @@ func runFile(script string) {
 		fmt.Printf("%#v\n", token)
 	}
 	// if hadError {
-		// os.Exit(65)
+	// os.Exit(65)
 	// }
 }

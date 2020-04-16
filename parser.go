@@ -3,7 +3,7 @@ package golox
 import "errors"
 
 type parser struct {
-	tokens  []token
+	tokens  []Token
 	current int
 }
 
@@ -19,7 +19,7 @@ func (p *parser) expression() expr {
 func (p *parser) equality() expr {
 	e := p.comparison()
 
-	for p.match([]tokenType{bangEqual, equalEqual}) {
+	for p.match([]TokenType{BangEqual, EqualEqual}) {
 		operator := p.previous()
 		right := p.comparison()
 		e = binaryExpr{e, operator, right}
@@ -30,7 +30,7 @@ func (p *parser) equality() expr {
 
 func (p *parser) comparison() expr {
 	e := p.addition()
-	for p.match([]tokenType{greater, greaterEqual, less, lessEqual}) {
+	for p.match([]TokenType{Greater, GreaterEqual, Less, LessEqual}) {
 
 		operator := p.previous()
 		right := p.addition()
@@ -42,7 +42,7 @@ func (p *parser) comparison() expr {
 
 func (p *parser) addition() expr {
 	e := p.multiplication()
-	for p.match([]tokenType{minus, plus}) {
+	for p.match([]TokenType{Minus, Plus}) {
 		operator := p.previous()
 		right := p.multiplication()
 		e = binaryExpr{e, operator, right}
@@ -54,7 +54,7 @@ func (p *parser) addition() expr {
 func (p *parser) multiplication() expr {
 	e := p.unary()
 
-	for p.match([]tokenType{slash, star}) {
+	for p.match([]TokenType{Slash, Star}) {
 		operator := p.previous()
 		right := p.unary()
 		e = binaryExpr{e, operator, right}
@@ -64,7 +64,7 @@ func (p *parser) multiplication() expr {
 }
 
 func (p *parser) unary() expr {
-	if p.match([]tokenType{bang, minus}) {
+	if p.match([]TokenType{Bang, Minus}) {
 		operator := p.previous()
 		right := p.unary()
 		return unaryExpr{operator, right}
@@ -77,21 +77,21 @@ func (p *parser) unary() expr {
 }
 
 func (p *parser) primary() (expr, error) {
-	if p.match([]tokenType{falseKeyword}) {
+	if p.match([]TokenType{FalseKeyword}) {
 		return literalExpr{false}, nil
 	}
-	if p.match([]tokenType{trueKeyword}) {
+	if p.match([]TokenType{TrueKeyword}) {
 		return literalExpr{true}, nil
 	}
-	if p.match([]tokenType{nilKeyword}) {
+	if p.match([]TokenType{NilKeyword}) {
 		return literalExpr{nil}, nil
 	}
-	if p.match([]tokenType{number, stringLiteral}) {
-		return literalExpr{p.previous().literal}, nil
+	if p.match([]TokenType{Number, StringLiteral}) {
+		return literalExpr{p.previous().Literal}, nil
 	}
-	if p.match([]tokenType{leftParen}) {
+	if p.match([]TokenType{LeftParen}) {
 		e := p.expression()
-		_, err := p.consume(rightParen, "Expected matching ')'")
+		_, err := p.consume(RightParen, "Expected matching ')'")
 		if err != nil {
 			// Do nothing for now
 		}
@@ -101,7 +101,7 @@ func (p *parser) primary() (expr, error) {
 	return nil, errors.New("Expected expression!")
 }
 
-func (p *parser) consume(ttype tokenType, message string) (token, error) {
+func (p *parser) consume(ttype TokenType, message string) (Token, error) {
 	if p.check(ttype) {
 		return p.advance(), nil
 	}
@@ -114,32 +114,32 @@ func (p *parser) synchronize() {
 	p.advance()
 
 	for !p.isAtEnd() {
-		if p.previous().ttype == semicolon {
+		if p.previous().Ttype == Semicolon {
 			return
 		}
-		switch p.peek().ttype {
-		case classKeyword:
+		switch p.peek().Ttype {
+		case ClassKeyword:
 			return
-		case funKeyword:
+		case FunKeyword:
 			return
-		case varKeyword:
+		case VarKeyword:
 			return
-		case forKeyword:
+		case ForKeyword:
 			return
-		case ifKeyword:
+		case IfKeyword:
 			return
-		case whileKeyword:
+		case WhileKeyword:
 			return
-		case printKeyword:
+		case PrintKeyword:
 			return
-		case returnKeyword:
+		case ReturnKeyword:
 			return
 		}
 		p.advance()
 	}
 }
 
-func (p *parser) match(ttypes []tokenType) bool {
+func (p *parser) match(ttypes []TokenType) bool {
 	for _, ttype := range ttypes {
 		if p.check(ttype) {
 			p.advance()
@@ -149,27 +149,27 @@ func (p *parser) match(ttypes []tokenType) bool {
 	return false
 }
 
-func (p *parser) check(ttype tokenType) bool {
+func (p *parser) check(ttype TokenType) bool {
 	if p.isAtEnd() {
 		return false
 	}
-	return p.peek().ttype == ttype
+	return p.peek().Ttype == ttype
 }
 
-func (p *parser) advance() token {
+func (p *parser) advance() Token {
 	if !p.isAtEnd() {
 		p.current++
 	}
 	return p.previous()
 }
 
-func (p *parser) previous() token {
+func (p *parser) previous() Token {
 	return p.tokens[p.current-1]
 }
 
-func (p *parser) peek() token {
+func (p *parser) peek() Token {
 	return p.tokens[p.current]
 }
 func (p *parser) isAtEnd() bool {
-	return p.peek().ttype == eof
+	return p.peek().Ttype == Eof
 }

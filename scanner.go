@@ -7,13 +7,13 @@ import (
 
 type scanner struct {
 	source  string
-	tokens  []token
+	tokens  []Token
 	start   int
 	current int
 	line    int
 }
 
-func (s *scanner) scanTokens() []token {
+func (s *scanner) scanTokens() []Token {
 	s.start = 0
 	s.current = 0
 	s.line = 1
@@ -22,7 +22,7 @@ func (s *scanner) scanTokens() []token {
 		s.scanToken()
 	}
 
-	token := token{eof, "", "", s.line}
+	token := Token{Eof, "", "", s.line}
 	s.tokens = append(s.tokens, token)
 	return s.tokens
 }
@@ -35,51 +35,51 @@ func (s *scanner) scanToken() {
 	c := s.advance()
 	switch c {
 	case "(":
-		s.addToken(leftParen)
+		s.addToken(LeftParen)
 	case ")":
-		s.addToken(rightParen)
+		s.addToken(RightParen)
 	case "{":
-		s.addToken(leftBrace)
+		s.addToken(LeftBrace)
 	case ",":
-		s.addToken(comma)
+		s.addToken(Comma)
 	case ".":
-		s.addToken(minus)
+		s.addToken(Minus)
 	case "+":
-		s.addToken(plus)
+		s.addToken(Plus)
 	case ";":
-		s.addToken(semicolon)
+		s.addToken(Semicolon)
 	case "*":
-		s.addToken(star)
+		s.addToken(Star)
 	case "!":
-		var t tokenType
+		var t TokenType
 		if s.match("=") {
-			t = bangEqual
+			t = BangEqual
 		} else {
-			t = bang
+			t = Bang
 		}
 		s.addToken(t)
 	case "=":
-		var t tokenType
+		var t TokenType
 		if s.match("=") {
-			t = equalEqual
+			t = EqualEqual
 		} else {
-			t = equal
+			t = Equal
 		}
 		s.addToken(t)
 	case "<":
-		var t tokenType
+		var t TokenType
 		if s.match("=") {
-			t = lessEqual
+			t = LessEqual
 		} else {
-			t = less
+			t = Less
 		}
 		s.addToken(t)
 	case ">":
-		var t tokenType
+		var t TokenType
 		if s.match("=") {
-			t = greaterEqual
+			t = GreaterEqual
 		} else {
-			t = greater
+			t = Greater
 		}
 		s.addToken(t)
 	case "\"":
@@ -90,7 +90,7 @@ func (s *scanner) scanToken() {
 				s.advance()
 			}
 		} else {
-			s.addToken(slash)
+			s.addToken(Slash)
 		}
 	case " ":
 	case "\r":
@@ -158,7 +158,7 @@ func (s *scanner) handleIdentifier() {
 	if ok {
 		s.addToken(ttype)
 	} else {
-		s.addToken(identifier)
+		s.addToken(Identifier)
 	}
 }
 
@@ -177,7 +177,7 @@ func (s *scanner) handleNumber() {
 	if err != nil {
 		reportError(s.line, "Couldn't parse number")
 	}
-	s.addTokenWithLiteral(number, num)
+	s.addTokenWithLiteral(Number, num)
 }
 
 func (s *scanner) handleString() {
@@ -192,7 +192,7 @@ func (s *scanner) handleString() {
 		return
 	}
 	s.advance()
-	s.addTokenWithLiteral(stringLiteral, s.source[s.start+1:s.current+1])
+	s.addTokenWithLiteral(StringLiteral, s.source[s.start+1:s.current-1])
 }
 
 func (s *scanner) advance() string {
@@ -200,12 +200,12 @@ func (s *scanner) advance() string {
 	return string(s.source[s.current-1])
 }
 
-func (s *scanner) addToken(ttype tokenType) {
+func (s *scanner) addToken(ttype TokenType) {
 	s.addTokenWithLiteral(ttype, nil)
 }
 
-func (s *scanner) addTokenWithLiteral(ttype tokenType, literal interface{}) {
+func (s *scanner) addTokenWithLiteral(ttype TokenType, literal interface{}) {
 	text := s.source[s.start:s.current]
-	token := token{ttype, text, literal, s.line}
+	token := Token{ttype, text, literal, s.line}
 	s.tokens = append(s.tokens, token)
 }

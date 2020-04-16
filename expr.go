@@ -5,12 +5,12 @@ type expr interface {
 
 type binaryExpr struct {
 	left     expr
-	operator token
+	operator Token
 	right    expr
 }
 
 type unaryExpr struct {
-	operator token
+	operator Token
 	right    expr
 }
 

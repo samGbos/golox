@@ -5,26 +5,52 @@ import (
 	"strconv"
 )
 
+type Step struct {
+	Tokens []Token
+	// Current int
+	// Line int
+}
+
 type scanner struct {
-	source  string
-	tokens  []Token
-	start   int
-	current int
-	line    int
+	source         string
+	tokens         []Token
+	start          int
+	current        int
+	line           int
+	lineStart      int
+	calculateSteps bool
+	steps          []Step
 }
 
 func (s *scanner) scanTokens() []Token {
 	s.start = 0
 	s.current = 0
+	s.lineStart = 0
 	s.line = 1
 	for !s.isAtEnd() {
 		s.start = s.current
 		s.scanToken()
 	}
 
-	token := Token{Eof, "", "", s.line}
-	s.tokens = append(s.tokens, token)
+	s.start = s.current
+	s.addTokenWithLiteral(Eof, "")
 	return s.tokens
+}
+
+func (s *scanner) scanTokensForSteps() []Step {
+	s.start = 0
+	s.current = 0
+    s.lineStart = 0
+	s.line = 1
+	s.calculateSteps = true
+	for !s.isAtEnd() {
+		s.start = s.current
+		s.scanToken()
+	}
+
+	s.start = s.current
+	s.addTokenWithLiteral(Eof, "")
+	return s.steps
 }
 
 func (s *scanner) isAtEnd() bool {
@@ -42,8 +68,10 @@ func (s *scanner) scanToken() {
 		s.addToken(LeftBrace)
 	case ",":
 		s.addToken(Comma)
-	case ".":
+	case "-":
 		s.addToken(Minus)
+	case ".":
+		s.addToken(Dot)
 	case "+":
 		s.addToken(Plus)
 	case ";":
@@ -96,7 +124,7 @@ func (s *scanner) scanToken() {
 	case "\r":
 	case "\t":
 	case "\n":
-		s.line++
+		s.incrementLine()
 
 	default:
 		if isDigit(c) {
@@ -183,7 +211,7 @@ func (s *scanner) handleNumber() {
 func (s *scanner) handleString() {
 	for s.peek() != "\"" && !s.isAtEnd() {
 		if s.peek() == "\n" {
-			s.line++
+			s.incrementLine()
 		}
 		s.advance()
 	}
@@ -193,6 +221,11 @@ func (s *scanner) handleString() {
 	}
 	s.advance()
 	s.addTokenWithLiteral(StringLiteral, s.source[s.start+1:s.current-1])
+}
+
+func (s *scanner) incrementLine() {
+    s.line++
+    s.lineStart = s.current
 }
 
 func (s *scanner) advance() string {
@@ -206,6 +239,10 @@ func (s *scanner) addToken(ttype TokenType) {
 
 func (s *scanner) addTokenWithLiteral(ttype TokenType, literal interface{}) {
 	text := s.source[s.start:s.current]
-	token := Token{ttype, text, literal, s.line}
+	token := Token{ttype, text, literal, s.line, s.start - s.lineStart, s.current - s.lineStart}
+	if s.calculateSteps {
+		step := Step{Tokens: s.tokens}
+		s.steps = append(s.steps, step)
+	}
 	s.tokens = append(s.tokens, token)
 }

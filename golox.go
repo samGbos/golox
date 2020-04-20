@@ -28,6 +28,11 @@ func RunScanner(source string) []Token {
 	return s.scanTokens()
 }
 
+func RunScannerForSteps(source string) []Step {
+	s := scanner{source: source}
+	return s.scanTokensForSteps()
+}
+
 func RunParser(source string) Expr {
 	tokens := RunScanner(source)
 	p := parser{tokens: tokens}

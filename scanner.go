@@ -3,12 +3,14 @@ package golox
 import (
 	"fmt"
 	"strconv"
+	"errors"
 )
 
 type Step struct {
 	Tokens []Token
-	// Current int
-	// Line int
+	Current int
+	Start int
+	Line int
 }
 
 type scanner struct {
@@ -22,42 +24,59 @@ type scanner struct {
 	steps          []Step
 }
 
-func (s *scanner) scanTokens() []Token {
+// displayError is a callback to show any errors found during scanning
+func (s *scanner) scanTokens(displayError func(string)) ([]Token, error) {
 	s.start = 0
 	s.current = 0
 	s.lineStart = 0
 	s.line = 1
+	hadError := false
 	for !s.isAtEnd() {
 		s.start = s.current
-		s.scanToken()
+		err := s.scanToken(displayError)
+		if err != nil {
+		    hadError = true
+		}
 	}
 
 	s.start = s.current
 	s.addTokenWithLiteral(Eof, "")
-	return s.tokens
+	if hadError {
+	    return s.tokens, errors.New("Error during scanning")
+	}
+	return s.tokens, nil
 }
 
-func (s *scanner) scanTokensForSteps() []Step {
+// displayError is a callback to show any errors found during scanning
+func (s *scanner) scanTokensForSteps(displayError func(string)) ([]Step, error) {
 	s.start = 0
 	s.current = 0
     s.lineStart = 0
 	s.line = 1
 	s.calculateSteps = true
+	hadError := false
 	for !s.isAtEnd() {
 		s.start = s.current
-		s.scanToken()
+		s.addStep()
+		err := s.scanToken(displayError)
+		if err != nil {
+		    hadError = true
+		}
 	}
 
 	s.start = s.current
 	s.addTokenWithLiteral(Eof, "")
-	return s.steps
+	if hadError {
+	    return s.steps, errors.New("Error during scanning")
+	}
+	return s.steps, nil
 }
 
 func (s *scanner) isAtEnd() bool {
 	return s.current >= len(s.source)
 }
 
-func (s *scanner) scanToken() {
+func (s *scanner) scanToken(displayError func(string)) error {
 	c := s.advance()
 	switch c {
 	case "(":
@@ -111,7 +130,10 @@ func (s *scanner) scanToken() {
 		}
 		s.addToken(t)
 	case "\"":
-		s.handleString()
+		err := s.handleString(displayError)
+		if err != nil {
+		    return err
+		}
 	case "/":
 		if s.match("/") {
 			for s.peek() != "\n" && !s.isAtEnd() {
@@ -128,13 +150,19 @@ func (s *scanner) scanToken() {
 
 	default:
 		if isDigit(c) {
-			s.handleNumber()
+					err := s.handleNumber(displayError)
+		if err != nil {
+		    return err
+		}
 		} else if isAlpha(c) {
 			s.handleIdentifier()
 		} else {
-			reportError(s.line, fmt.Sprintf("Unexpected character %s", c))
+		    errorMsg := fmt.Sprintf("Unexpected character '%s' on line %d", c, s.line)
+		    displayError(errorMsg)
+		    return errors.New(errorMsg)
 		}
 	}
+	return nil
 }
 
 func (s *scanner) match(expected string) bool {
@@ -145,6 +173,7 @@ func (s *scanner) match(expected string) bool {
 		return false
 	}
 	s.current++
+	s.addStep()
 	return true
 }
 
@@ -190,7 +219,7 @@ func (s *scanner) handleIdentifier() {
 	}
 }
 
-func (s *scanner) handleNumber() {
+func (s *scanner) handleNumber(displayError func(string)) error {
 	for isDigit(s.peek()) {
 		s.advance()
 	}
@@ -203,12 +232,15 @@ func (s *scanner) handleNumber() {
 	}
 	num, err := strconv.ParseFloat(s.source[s.start:s.current], 64)
 	if err != nil {
-		reportError(s.line, "Couldn't parse number")
+	    errorMsg := fmt.Sprintf("Couldn't parse number on line %d", s.line)
+		displayError(errorMsg)
+		return errors.New(errorMsg)
 	}
 	s.addTokenWithLiteral(Number, num)
+	return nil
 }
 
-func (s *scanner) handleString() {
+func (s *scanner) handleString(displayError func(string)) error {
 	for s.peek() != "\"" && !s.isAtEnd() {
 		if s.peek() == "\n" {
 			s.incrementLine()
@@ -216,11 +248,13 @@ func (s *scanner) handleString() {
 		s.advance()
 	}
 	if s.isAtEnd() {
-		reportError(s.line, "Unterminated string")
-		return
+	    errorMsg := fmt.Sprintf("Unterminated string on line %d", s.line)
+	    displayError(errorMsg)
+		return errors.New(errorMsg)
 	}
 	s.advance()
 	s.addTokenWithLiteral(StringLiteral, s.source[s.start+1:s.current-1])
+	return nil
 }
 
 func (s *scanner) incrementLine() {
@@ -229,7 +263,8 @@ func (s *scanner) incrementLine() {
 }
 
 func (s *scanner) advance() string {
-	s.current = s.current + 1
+	s.current++
+	s.addStep()
 	return string(s.source[s.current-1])
 }
 
@@ -240,9 +275,13 @@ func (s *scanner) addToken(ttype TokenType) {
 func (s *scanner) addTokenWithLiteral(ttype TokenType, literal interface{}) {
 	text := s.source[s.start:s.current]
 	token := Token{ttype, text, literal, s.line, s.start - s.lineStart, s.current - s.lineStart}
-	if s.calculateSteps {
-		step := Step{Tokens: s.tokens}
+	s.tokens = append(s.tokens, token)
+	s.addStep()
+}
+
+func (s *scanner) addStep() {
+    if s.calculateSteps {
+		step := Step{Tokens: s.tokens, Current: s.current - s.lineStart, Start: s.start - s.lineStart, Line: s.line}
 		s.steps = append(s.steps, step)
 	}
-	s.tokens = append(s.tokens, token)
 }

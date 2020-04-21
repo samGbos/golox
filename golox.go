@@ -23,18 +23,26 @@ func report(line int, where string, message string) {
 	fmt.Println("Error on line ", line, ":", where, " -- ", message)
 }
 
-func RunScanner(source string) []Token {
+func RunScanner(source string, displayError func(string)) []Token {
 	s := scanner{source: source}
-	return s.scanTokens()
+	tokens, err := s.scanTokens(displayError)
+	if err != nil {
+	    // do nothing
+	}
+	return tokens
 }
 
-func RunScannerForSteps(source string) []Step {
+func RunScannerForSteps(source string, displayError func(string)) []Step {
 	s := scanner{source: source}
-	return s.scanTokensForSteps()
+	steps, err := s.scanTokensForSteps(displayError)
+	if err != nil {
+	    // do nothing
+	}
+	return steps
 }
 
-func RunParser(source string) Expr {
-	tokens := RunScanner(source)
+func RunParser(source string, displayError func(string)) Expr {
+	tokens := RunScanner(source, displayError)
 	p := parser{tokens: tokens}
 	expr := p.parse()
 	return expr

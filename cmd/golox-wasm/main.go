@@ -24,6 +24,9 @@ func convertStep(step golox.Step) map[string]interface{} {
 	}
 	return map[string]interface{}{
 		"tokens": tokens,
+		"current": step.Current,
+		"start": step.Start,
+		"line": step.Line,
 	}
 }
 
@@ -54,9 +57,13 @@ func convertExpr(expr golox.Expr) map[string]interface{} {
 
 func runScanner(this js.Value, inputs []js.Value) interface{} {
 	message := inputs[0].String()
-	callback := inputs[1]
+	errorHandler := inputs[1]
 
-	steps := golox.RunScannerForSteps(message)
+    displayError := func(errorMsg string) {
+        errorHandler.Invoke(errorMsg)
+    }
+
+	steps := golox.RunScannerForSteps(message, displayError)
 	serializedSteps := make([]interface{}, len(steps))
 	for istep, step := range steps {
 		serializedSteps[istep] = convertStep(step)
@@ -65,19 +72,21 @@ func runScanner(this js.Value, inputs []js.Value) interface{} {
 	jsVal := map[string]interface{}{
 		"steps": serializedSteps,
 	}
-	callback.Invoke(jsVal)
 	return jsVal
 }
 
 func runParser(this js.Value, inputs []js.Value) interface{} {
 	message := inputs[0].String()
-	callback := inputs[1]
+	errorHandler := inputs[1]
 
-	expr := golox.RunParser(message)
+    displayError := func(errorMsg string) {
+        errorHandler.Invoke(errorMsg)
+    }
+
+	expr := golox.RunParser(message, displayError)
 
 	jsVal := map[string]interface{}{
 		"expr": convertExpr(expr),
 	}
-	callback.Invoke(jsVal)
 	return jsVal
 }

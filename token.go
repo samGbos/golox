@@ -6,7 +6,7 @@ type Token struct {
 	Literal interface{}
 	Line    int
 	// Start marks the start position of this token on this line
-	Start   int
+	Start int
 	// End marks the end position of this token on this line
-	End     int
+	End int
 }

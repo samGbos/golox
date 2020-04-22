@@ -1,104 +1,172 @@
 package golox
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
+
+type ParserStep struct {
+	Exprs []Expr
+}
 
 type parser struct {
 	tokens  []Token
 	current int
+	exprs   []Expr
+	steps   []ParserStep
 }
 
 func (p *parser) parse() Expr {
 	p.current = 0
-	return p.expression()
+	p.expression()
+	return p.exprs[0]
 }
 
-func (p *parser) expression() Expr {
-	return p.equality()
+func (p *parser) parseForSteps() []ParserStep {
+	p.current = 0
+	p.expression()
+	return p.steps
 }
 
-func (p *parser) equality() Expr {
-	expr := p.comparison()
+func copyExprs(exprs []Expr) []Expr {
+	es := make([]Expr, len(exprs))
+	for i, e := range exprs {
+		es[i] = e.Copy()
+	}
+	return es
+}
+
+func (p *parser) addExpr(expr Expr) {
+	if len(p.exprs) > 0 {
+		exprToUpdate := p.exprs[len(p.exprs)-1]
+		fmt.Println("Update ", exprToUpdate.Name(), " to ", expr.Name())
+		exprToUpdate.UpdateChildExpr(expr)
+	}
+	p.exprs = append(p.exprs, expr)
+	fmt.Println("Push ", expr.Name())
+	p.steps = append(p.steps, ParserStep{Exprs: copyExprs(p.exprs)})
+}
+
+func (p *parser) getExpr() Expr {
+	expr := p.exprs[len(p.exprs)-1]
+	return expr
+}
+
+func (p *parser) popExpr() Expr {
+	newSize := len(p.exprs) - 1
+	expr := p.exprs[len(p.exprs)-1]
+	p.exprs = p.exprs[:newSize]
+	fmt.Println("Pop ", expr.Name())
+	p.steps = append(p.steps, ParserStep{Exprs: copyExprs(p.exprs)})
+	return expr
+}
+
+func (p *parser) expression() {
+	p.equality()
+}
+
+func (p *parser) equality() {
+	p.comparison()
 
 	for p.match([]TokenType{BangEqual, EqualEqual}) {
 		operator := p.previous()
-		right := p.comparison()
-		expr = binaryExpr{expr, operator, right}
+		right := unknownExpr{}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right})
+		p.comparison()
+		p.popExpr()
 	}
-
-	return expr
 }
 
-func (p *parser) comparison() Expr {
-	expr := p.addition()
+func (p *parser) comparison() {
+	p.addition()
+
 	for p.match([]TokenType{Greater, GreaterEqual, Less, LessEqual}) {
-
 		operator := p.previous()
-		right := p.addition()
-		expr = binaryExpr{expr, operator, right}
+		right := unknownExpr{}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right})
+		p.addition()
+		p.popExpr()
 	}
-
-	return expr
 }
 
-func (p *parser) addition() Expr {
-	expr := p.multiplication()
+func (p *parser) addition() {
+	p.multiplication()
+
 	for p.match([]TokenType{Minus, Plus}) {
 		operator := p.previous()
-		right := p.multiplication()
-		expr = binaryExpr{expr, operator, right}
-	}
+		right := unknownExpr{}
 
-	return expr
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right})
+		p.multiplication()
+		p.popExpr()
+	}
 }
 
-func (p *parser) multiplication() Expr {
-	expr := p.unary()
-
+func (p *parser) multiplication() {
+	p.unary()
 	for p.match([]TokenType{Slash, Star}) {
 		operator := p.previous()
-		right := p.unary()
-		expr = binaryExpr{expr, operator, right}
+		right := unknownExpr{}
+
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right})
+		p.unary()
+		p.popExpr()
 	}
 
-	return expr
 }
 
-func (p *parser) unary() Expr {
+// 2
+// 2+
+// 2+3 3
+// 2+* 3*?
+// 2+* 3*4 4
+// 2+* 3*4
+
+func (p *parser) unary() {
 	if p.match([]TokenType{Bang, Minus}) {
 		operator := p.previous()
-		right := p.unary()
-		return unaryExpr{operator, right}
+		right := unknownExpr{}
+		p.addExpr(&unaryExpr{operator, &right})
+		p.unary()
+		p.popExpr()
+		return
 	}
-	expr, err := p.primary()
+	err := p.primary()
 	if err != nil {
 		// Do something
 	}
-	return expr
 }
 
-func (p *parser) primary() (Expr, error) {
+func (p *parser) primary() error {
 	if p.match([]TokenType{FalseKeyword}) {
-		return literalExpr{false}, nil
+		p.addExpr(&literalExpr{false})
+		return nil
 	}
 	if p.match([]TokenType{TrueKeyword}) {
-		return literalExpr{true}, nil
+		p.addExpr(&literalExpr{true})
+		return nil
 	}
 	if p.match([]TokenType{NilKeyword}) {
-		return literalExpr{nil}, nil
+		p.addExpr(&literalExpr{nil})
+		return nil
 	}
 	if p.match([]TokenType{Number, StringLiteral}) {
-		return literalExpr{p.previous().Literal}, nil
+		p.addExpr(&literalExpr{p.previous().Literal})
+		return nil
 	}
 	if p.match([]TokenType{LeftParen}) {
-		expr := p.expression()
+		expr := unknownExpr{}
+		p.addExpr(&groupingExpr{&expr})
+		p.expression()
+		p.popExpr()
 		_, err := p.consume(RightParen, "Expected matching ')'")
 		if err != nil {
 			// Do nothing for now
 		}
-		return groupingExpr{expr}, nil
+		return nil
 	}
 	parseError(p.peek(), "Expected expression")
-	return nil, errors.New("Expected expression!")
+	return errors.New("Expected expression!")
 }
 
 func (p *parser) consume(ttype TokenType, message string) (Token, error) {

@@ -27,16 +27,16 @@ func RunScanner(source string, displayError func(string)) []Token {
 	s := scanner{source: source}
 	tokens, err := s.scanTokens(displayError)
 	if err != nil {
-	    // do nothing
+		// do nothing
 	}
 	return tokens
 }
 
-func RunScannerForSteps(source string, displayError func(string)) []Step {
+func RunScannerForSteps(source string, displayError func(string)) []ScannerStep {
 	s := scanner{source: source}
 	steps, err := s.scanTokensForSteps(displayError)
 	if err != nil {
-	    // do nothing
+		// do nothing
 	}
 	return steps
 }
@@ -44,6 +44,11 @@ func RunScannerForSteps(source string, displayError func(string)) []Step {
 func RunParser(source string, displayError func(string)) Expr {
 	tokens := RunScanner(source, displayError)
 	p := parser{tokens: tokens}
-	expr := p.parse()
-	return expr
+	return p.parse()
+}
+
+func RunParserForSteps(source string, displayError func(string)) []ParserStep {
+	tokens := RunScanner(source, displayError)
+	p := parser{tokens: tokens}
+	return p.parseForSteps()
 }

@@ -17,16 +17,27 @@ func main() {
 	<-c
 }
 
-func convertStep(step golox.Step) map[string]interface{} {
+func convertScannerStep(step golox.ScannerStep) map[string]interface{} {
 	tokens := make([]interface{}, len(step.Tokens))
 	for itok, token := range step.Tokens {
 		tokens[itok] = convertToken(token)
 	}
 	return map[string]interface{}{
-		"tokens": tokens,
+		"tokens":  tokens,
 		"current": step.Current,
-		"start": step.Start,
-		"line": step.Line,
+		"start":   step.Start,
+		"line":    step.Line,
+	}
+}
+
+func convertParserStep(step golox.ParserStep) map[string]interface{} {
+	exprs := make([]interface{}, len(step.Exprs))
+	for idx, expr := range step.Exprs {
+		exprs[idx] = convertExpr(expr)
+	}
+
+	return map[string]interface{}{
+		"exprs": exprs,
 	}
 }
 
@@ -47,8 +58,6 @@ func convertExpr(expr golox.Expr) map[string]interface{} {
 	for idx, child := range exprChildren {
 		children[idx] = convertExpr(child)
 	}
-	fmt.Println(expr.Name())
-	fmt.Println(children)
 	return map[string]interface{}{
 		"name":     expr.Name(),
 		"children": children,
@@ -59,14 +68,14 @@ func runScanner(this js.Value, inputs []js.Value) interface{} {
 	message := inputs[0].String()
 	errorHandler := inputs[1]
 
-    displayError := func(errorMsg string) {
-        errorHandler.Invoke(errorMsg)
-    }
+	displayError := func(errorMsg string) {
+		errorHandler.Invoke(errorMsg)
+	}
 
 	steps := golox.RunScannerForSteps(message, displayError)
 	serializedSteps := make([]interface{}, len(steps))
 	for istep, step := range steps {
-		serializedSteps[istep] = convertStep(step)
+		serializedSteps[istep] = convertScannerStep(step)
 	}
 
 	jsVal := map[string]interface{}{
@@ -79,14 +88,18 @@ func runParser(this js.Value, inputs []js.Value) interface{} {
 	message := inputs[0].String()
 	errorHandler := inputs[1]
 
-    displayError := func(errorMsg string) {
-        errorHandler.Invoke(errorMsg)
-    }
+	displayError := func(errorMsg string) {
+		errorHandler.Invoke(errorMsg)
+	}
 
-	expr := golox.RunParser(message, displayError)
+	steps := golox.RunParserForSteps(message, displayError)
+	serializedSteps := make([]interface{}, len(steps))
+	for istep, step := range steps {
+		serializedSteps[istep] = convertParserStep(step)
+	}
 
 	jsVal := map[string]interface{}{
-		"expr": convertExpr(expr),
+		"steps": serializedSteps,
 	}
 	return jsVal
 }

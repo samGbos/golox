@@ -93,8 +93,8 @@ func (p *parser) equality() {
 
 	for p.match([]TokenType{BangEqual, EqualEqual}) {
 		operator := p.previous()
-		right := unknownExpr{p.exprCount() + 1}
-		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount() - 1})
+		right := unknownExpr{p.exprCount()}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount()})
 		p.comparison()
 		p.popExpr()
 	}
@@ -107,8 +107,8 @@ func (p *parser) comparison() {
 
 	for p.match([]TokenType{Greater, GreaterEqual, Less, LessEqual}) {
 		operator := p.previous()
-		right := unknownExpr{p.exprCount() + 1}
-		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount() - 1})
+		right := unknownExpr{p.exprCount()}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount()})
 		p.addition()
 		p.popExpr()
 	}
@@ -125,8 +125,8 @@ func (p *parser) addition() {
 		operator := p.previous()
 		// For the visualization I want the parent to appear before the unknown value,
 		// so tweak the orders to make it look that way
-		right := unknownExpr{p.exprCount() + 1}
-		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount() - 1})
+		right := unknownExpr{p.exprCount()}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount()})
 		p.multiplication()
 		p.popExpr()
 	}
@@ -140,8 +140,8 @@ func (p *parser) multiplication() {
 	p.unary()
 	for p.match([]TokenType{Slash, Star}) {
 		operator := p.previous()
-		right := unknownExpr{p.exprCount() + 1}
-		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount() - 1})
+		right := unknownExpr{p.exprCount()}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount()})
 		p.unary()
 		p.popExpr()
 	}
@@ -161,8 +161,8 @@ func (p *parser) unary() {
 
 	if p.match([]TokenType{Bang, Minus}) {
 		operator := p.previous()
-		right := unknownExpr{p.exprCount() + 1}
-		p.addExpr(&unaryExpr{operator, &right, p.exprCount() - 1})
+		right := unknownExpr{p.exprCount()}
+		p.addExpr(&unaryExpr{operator, &right, p.exprCount()})
 		p.unary()
 		p.popExpr()
 		return
@@ -203,8 +203,8 @@ func (p *parser) primary() error {
 		return nil
 	}
 	if p.match([]TokenType{LeftParen}) {
-		expr := unknownExpr{p.exprCount() + 1}
-		p.addExpr(&groupingExpr{&expr, p.exprCount() - 1, p.previous()})
+		expr := unknownExpr{p.exprCount()}
+		p.addExpr(&groupingExpr{&expr, p.exprCount(), p.previous()})
 		p.expression()
 		p.popExpr()
 		_, err := p.consume(RightParen, "Expected matching ')'")

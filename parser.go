@@ -2,28 +2,33 @@ package golox
 
 import (
 	"errors"
-	"fmt"
 )
 
 type ParserStep struct {
 	Exprs []Expr
+	Logs  []string
 }
 
 type parser struct {
-	tokens  []Token
-	current int
-	exprs   []Expr
-	steps   []ParserStep
+	tokens          []Token
+	current         int
+	expressionCount int
+	exprs           []Expr
+	steps           []ParserStep
+	logs            []string
 }
 
 func (p *parser) parse() Expr {
 	p.current = 0
+	p.expressionCount = 0
 	p.expression()
 	return p.exprs[0]
 }
 
 func (p *parser) parseForSteps() []ParserStep {
 	p.current = 0
+	p.expressionCount = 0
+	p.steps = append(p.steps, ParserStep{Exprs: copyExprs(p.exprs), Logs: copyLogs(p.logs)})
 	p.expression()
 	return p.steps
 }
@@ -35,16 +40,30 @@ func copyExprs(exprs []Expr) []Expr {
 	}
 	return es
 }
+func copyLogs(logs []string) []string {
+	ls := make([]string, len(logs))
+	copy(ls, logs)
+	return ls
+}
+
+func (p *parser) addLog(log string) {
+	p.logs = append(p.logs, log)
+	p.steps = append(p.steps, ParserStep{Exprs: copyExprs(p.exprs), Logs: copyLogs(p.logs)})
+}
+
+func (p *parser) popLog() {
+	newSize := len(p.logs) - 1
+	p.logs = p.logs[:newSize]
+	p.steps = append(p.steps, ParserStep{Exprs: copyExprs(p.exprs), Logs: copyLogs(p.logs)})
+}
 
 func (p *parser) addExpr(expr Expr) {
 	if len(p.exprs) > 0 {
 		exprToUpdate := p.exprs[len(p.exprs)-1]
-		fmt.Println("Update ", exprToUpdate.Name(), " to ", expr.Name())
 		exprToUpdate.UpdateChildExpr(expr)
 	}
 	p.exprs = append(p.exprs, expr)
-	fmt.Println("Push ", expr.Name())
-	p.steps = append(p.steps, ParserStep{Exprs: copyExprs(p.exprs)})
+	p.steps = append(p.steps, ParserStep{Exprs: copyExprs(p.exprs), Logs: copyLogs(p.logs)})
 }
 
 func (p *parser) getExpr() Expr {
@@ -56,62 +75,77 @@ func (p *parser) popExpr() Expr {
 	newSize := len(p.exprs) - 1
 	expr := p.exprs[len(p.exprs)-1]
 	p.exprs = p.exprs[:newSize]
-	fmt.Println("Pop ", expr.Name())
-	p.steps = append(p.steps, ParserStep{Exprs: copyExprs(p.exprs)})
+	if len(p.exprs) > 0 {
+		p.steps = append(p.steps, ParserStep{Exprs: copyExprs(p.exprs), Logs: copyLogs(p.logs)})
+	}
 	return expr
 }
 
 func (p *parser) expression() {
+	p.addLog("Searching for expresssion")
 	p.equality()
+	p.popLog()
 }
 
 func (p *parser) equality() {
+	p.addLog("Searching for equality or higher")
 	p.comparison()
 
 	for p.match([]TokenType{BangEqual, EqualEqual}) {
 		operator := p.previous()
-		right := unknownExpr{}
-		p.addExpr(&binaryExpr{p.popExpr(), operator, &right})
+		right := unknownExpr{p.exprCount() + 1}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount() - 1})
 		p.comparison()
 		p.popExpr()
 	}
+	p.popLog()
 }
 
 func (p *parser) comparison() {
+	p.addLog("Searching for comparison or higher")
 	p.addition()
 
 	for p.match([]TokenType{Greater, GreaterEqual, Less, LessEqual}) {
 		operator := p.previous()
-		right := unknownExpr{}
-		p.addExpr(&binaryExpr{p.popExpr(), operator, &right})
+		right := unknownExpr{p.exprCount() + 1}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount() - 1})
 		p.addition()
 		p.popExpr()
 	}
+	p.popLog()
+
 }
 
 func (p *parser) addition() {
+	p.addLog("Searching for addition or higher")
+
 	p.multiplication()
 
 	for p.match([]TokenType{Minus, Plus}) {
 		operator := p.previous()
-		right := unknownExpr{}
-
-		p.addExpr(&binaryExpr{p.popExpr(), operator, &right})
+		// For the visualization I want the parent to appear before the unknown value,
+		// so tweak the orders to make it look that way
+		right := unknownExpr{p.exprCount() + 1}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount() - 1})
 		p.multiplication()
 		p.popExpr()
 	}
+	p.popLog()
+
 }
 
 func (p *parser) multiplication() {
+	p.addLog("Searching for multiplication or higher")
+
 	p.unary()
 	for p.match([]TokenType{Slash, Star}) {
 		operator := p.previous()
-		right := unknownExpr{}
-
-		p.addExpr(&binaryExpr{p.popExpr(), operator, &right})
+		right := unknownExpr{p.exprCount() + 1}
+		p.addExpr(&binaryExpr{p.popExpr(), operator, &right, p.exprCount() - 1})
 		p.unary()
 		p.popExpr()
 	}
+	p.popLog()
 
 }
 
@@ -123,10 +157,12 @@ func (p *parser) multiplication() {
 // 2+* 3*4
 
 func (p *parser) unary() {
+	p.addLog("Searching for unary or higher")
+
 	if p.match([]TokenType{Bang, Minus}) {
 		operator := p.previous()
-		right := unknownExpr{}
-		p.addExpr(&unaryExpr{operator, &right})
+		right := unknownExpr{p.exprCount() + 1}
+		p.addExpr(&unaryExpr{operator, &right, p.exprCount() - 1})
 		p.unary()
 		p.popExpr()
 		return
@@ -135,38 +171,59 @@ func (p *parser) unary() {
 	if err != nil {
 		// Do something
 	}
+	p.popLog()
+
 }
 
 func (p *parser) primary() error {
+	p.addLog("Searching for primary")
+
 	if p.match([]TokenType{FalseKeyword}) {
-		p.addExpr(&literalExpr{false})
+		p.addExpr(&literalExpr{false, p.exprCount(), p.previous()})
+		p.popLog()
+
 		return nil
 	}
 	if p.match([]TokenType{TrueKeyword}) {
-		p.addExpr(&literalExpr{true})
+		p.addExpr(&literalExpr{true, p.exprCount(), p.previous()})
+		p.popLog()
+
 		return nil
 	}
 	if p.match([]TokenType{NilKeyword}) {
-		p.addExpr(&literalExpr{nil})
+		p.addExpr(&literalExpr{nil, p.exprCount(), p.previous()})
+		p.popLog()
+
 		return nil
 	}
 	if p.match([]TokenType{Number, StringLiteral}) {
-		p.addExpr(&literalExpr{p.previous().Literal})
+		p.addExpr(&literalExpr{p.previous().Literal, p.exprCount(), p.previous()})
+		p.popLog()
+
 		return nil
 	}
 	if p.match([]TokenType{LeftParen}) {
-		expr := unknownExpr{}
-		p.addExpr(&groupingExpr{&expr})
+		expr := unknownExpr{p.exprCount() + 1}
+		p.addExpr(&groupingExpr{&expr, p.exprCount() - 1, p.previous()})
 		p.expression()
 		p.popExpr()
 		_, err := p.consume(RightParen, "Expected matching ')'")
 		if err != nil {
 			// Do nothing for now
 		}
+		p.popLog()
+
 		return nil
 	}
 	parseError(p.peek(), "Expected expression")
+	p.popLog()
+
 	return errors.New("Expected expression!")
+}
+
+func (p *parser) exprCount() int {
+	p.expressionCount++
+	return p.expressionCount
 }
 
 func (p *parser) consume(ttype TokenType, message string) (Token, error) {

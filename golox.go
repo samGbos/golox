@@ -47,8 +47,8 @@ func RunParser(source string, displayError func(string)) Expr {
 	return p.parse()
 }
 
-func RunParserForSteps(source string, displayError func(string)) []ParserStep {
+func RunParserForSteps(source string, displayError func(string)) ([]ParserStep, []Token) {
 	tokens := RunScanner(source, displayError)
 	p := parser{tokens: tokens}
-	return p.parseForSteps()
+	return p.parseForSteps(), tokens
 }

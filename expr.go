@@ -5,9 +5,13 @@ type Expr interface {
 	Children() []Expr
 	UpdateChildExpr(Expr)
 	Copy() Expr
+	Order() int
+	Token() Token
 }
 
-type unknownExpr struct{}
+type unknownExpr struct {
+	order int
+}
 
 func (expr unknownExpr) Name() interface{} {
 	return "??"
@@ -22,13 +26,22 @@ func (expr *unknownExpr) UpdateChildExpr(child Expr) {
 }
 
 func (expr *unknownExpr) Copy() Expr {
-	return &unknownExpr{}
+	return &unknownExpr{expr.order}
+}
+
+func (expr *unknownExpr) Order() int {
+	return expr.order
+}
+
+func (expr *unknownExpr) Token() Token {
+	return Token{}
 }
 
 type binaryExpr struct {
 	left     Expr
 	operator Token
 	right    Expr
+	order    int
 }
 
 func (expr binaryExpr) Name() interface{} {
@@ -44,12 +57,21 @@ func (expr *binaryExpr) UpdateChildExpr(child Expr) {
 }
 
 func (expr *binaryExpr) Copy() Expr {
-	return &binaryExpr{expr.left.Copy(), expr.operator, expr.right.Copy()}
+	return &binaryExpr{expr.left.Copy(), expr.operator, expr.right.Copy(), expr.Order()}
+}
+
+func (expr *binaryExpr) Order() int {
+	return expr.order
+}
+
+func (expr *binaryExpr) Token() Token {
+	return expr.operator
 }
 
 type unaryExpr struct {
 	operator Token
 	right    Expr
+	order    int
 }
 
 func (expr unaryExpr) Name() interface{} {
@@ -65,11 +87,21 @@ func (expr *unaryExpr) UpdateChildExpr(child Expr) {
 }
 
 func (expr *unaryExpr) Copy() Expr {
-	return &unaryExpr{expr.operator, expr.right.Copy()}
+	return &unaryExpr{expr.operator, expr.right.Copy(), expr.Order()}
+}
+
+func (expr *unaryExpr) Order() int {
+	return expr.order
+}
+
+func (expr *unaryExpr) Token() Token {
+	return expr.operator
 }
 
 type literalExpr struct {
 	value interface{}
+	order int
+	token Token
 }
 
 func (expr literalExpr) Name() interface{} {
@@ -85,11 +117,21 @@ func (expr literalExpr) UpdateChildExpr(child Expr) {
 }
 
 func (expr *literalExpr) Copy() Expr {
-	return &literalExpr{expr.value}
+	return &literalExpr{expr.value, expr.Order(), expr.Token()}
+}
+
+func (expr *literalExpr) Order() int {
+	return expr.order
+}
+
+func (expr *literalExpr) Token() Token {
+	return expr.token
 }
 
 type groupingExpr struct {
 	expression Expr
+	order      int
+	token      Token
 }
 
 func (expr groupingExpr) Name() interface{} {
@@ -106,5 +148,13 @@ func (expr *groupingExpr) UpdateChildExpr(child Expr) {
 }
 
 func (expr *groupingExpr) Copy() Expr {
-	return &groupingExpr{expr.expression.Copy()}
+	return &groupingExpr{expr.expression.Copy(), expr.Order(), expr.Token()}
+}
+
+func (expr *groupingExpr) Order() int {
+	return expr.order
+}
+
+func (expr *groupingExpr) Token() Token {
+	return expr.token
 }

@@ -36,8 +36,14 @@ func convertParserStep(step golox.ParserStep) map[string]interface{} {
 		exprs[idx] = convertExpr(expr)
 	}
 
+	logs := make([]interface{}, len(step.Logs))
+	for idx, log := range step.Logs {
+		logs[idx] = log
+	}
+
 	return map[string]interface{}{
 		"exprs": exprs,
+		"logs":  logs,
 	}
 }
 
@@ -61,6 +67,8 @@ func convertExpr(expr golox.Expr) map[string]interface{} {
 	return map[string]interface{}{
 		"name":     expr.Name(),
 		"children": children,
+		"order":    expr.Order(),
+		"token":    convertToken(expr.Token()),
 	}
 }
 
@@ -92,14 +100,19 @@ func runParser(this js.Value, inputs []js.Value) interface{} {
 		errorHandler.Invoke(errorMsg)
 	}
 
-	steps := golox.RunParserForSteps(message, displayError)
+	steps, tokens := golox.RunParserForSteps(message, displayError)
 	serializedSteps := make([]interface{}, len(steps))
 	for istep, step := range steps {
 		serializedSteps[istep] = convertParserStep(step)
 	}
+	serializedTokens := make([]interface{}, len(tokens))
+	for itok, token := range tokens {
+		serializedTokens[itok] = convertToken(token)
+	}
 
 	jsVal := map[string]interface{}{
-		"steps": serializedSteps,
+		"steps":  serializedSteps,
+		"tokens": serializedTokens,
 	}
 	return jsVal
 }
